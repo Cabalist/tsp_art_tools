@@ -1,3 +1,4 @@
+# coding=utf-8
 # tspsolution.py
 # 9/26/2010-A
 
@@ -23,99 +24,98 @@
 
 import sys
 
+
 class tspSolution:
+    def __init__(self):
 
-	def __init__( self ):
+        # Input file name saved for error reporting
+        self.infile = ''
 
-		# Input file name saved for error reporting
-		self.infile = ''
+        # Count declared at the start of the solution file
+        # We save this for doing a sanity check later
+        self.count = 0
 
-		# Count declared at the start of the solution file
-		# We save this for doing a sanity check later
-		self.count = 0
+        # The tour stored as a simple list
+        self.tour = []
 
-		# The tour stored as a simple list
-		self.tour = []
+    # Solution files from linkern have the format
+    #
+    #   count count
+    #   index-0 index-1 length-0-1
+    #   index-1 index-2 length-1-2
+    #   index-2 index-3 length-2-3
+    #   ...     ...     ...
 
-	# Solution files from linkern have the format
-	#
-	#   count count
-	#   index-0 index-1 length-0-1
-	#   index-1 index-2 length-1-2
-	#   index-2 index-3 length-2-3
-	#   ...     ...     ...
+    def __load_linkern(self, f):
+        assert f
+        for line in f:
+            vals = line.strip().split(' ')
+            if len(vals) != 3:
+                continue
+            self.tour += vals[0:1]
+        return True
 
-	def __load_linkern( self, f ):
-		assert f
-		for line in f:
-			vals = line.strip().split(' ')
-			if len( vals ) != 3:
-				continue
-			self.tour += vals[0:1]
-			self.tour
-		return True
+    # Solution files from concorde have the format
+    #
+    #   count
+    #   index-0 index-1 index-2 index-3 ... index-9
+    #   index-10 index-11 length-12 index-13 ... index-19
+    #   index-20 index-21 length-22 index-23 ... index-29
+    #   ...
+    #
+    # The final line will have between 1 and 10 indices
 
-	# Solution files from concorde have the format
-	#
-	#   count
-	#   index-0 index-1 index-2 index-3 ... index-9
-	#   index-10 index-11 length-12 index-13 ... index-19
-	#   index-20 index-21 length-22 index-23 ... index-29
-	#   ...
-	#
-	# The final line will have between 1 and 10 indices
+    def __load_concorde(self, f):
+        assert f
+        for line in f:
+            vals = line.strip().split(' ')
+            if len(vals) == 0:
+                continue
+            self.tour += vals
+        return True
 
-	def __load_concorde( self, f ):
-		assert f
-		for line in f:
-			vals = line.strip().split(' ')
-			if len( vals ) == 0:
-				continue
-			self.tour += vals
-		return True
+    def load(self, infile):
+        self.count = 0
+        self.tour = []
+        self.infile = infile
 
-	def load( self, infile ):
-		self.count = 0
-		self.tour = []
-		self.infile = infile
+        f = open(infile, 'r')
 
-		f = open( infile, 'r' )
+        line = f.readline().strip()
+        vals = line.split(' ')
+        if len(vals) == 1:
+            # Looks like a solution from Concorde
+            self.count = int(vals[0])
+            ok = self.__load_concorde(f)
+        elif len(vals) == 2:
+            # Looks like a solution from Lin-Kern
+            self.count = int(vals[0])
+            ok = self.__load_linkern(f)
+        else:
+            f.close()
+            sys.stderr.write('Input file %s has unknown format\n' % self.infile)
+            return False
 
-		line = f.readline().strip()
-		vals = line.split( ' ' )
-		if len( vals ) == 1:
-			# Looks like a solution from Concorde
-			self.count = int( vals[0] )
-			ok = self.__load_concorde( f )
-		elif len( vals ) == 2:
-			# Looks like a solution from Lin-Kern
-			self.count = int( vals[0] )
-			ok = self.__load_linkern( f )
-		else:
-			f.close()
-			sys.stderr.write( 'Input file %s has unknown format\n' % self.infile )
-			return False
+        f.close()
+        if not ok:
+            return False
 
-		f.close()
-		if not ok:
-			return False
+        # Sanity check that we read the correct number of indices from the file
+        if len(self.tour) != self.count:
+            sys.stderr.write('Solution file contains wrong number of indices; %d != %d\n' % (len(self.tour), self.count))
+            return False
 
-		# Sanity check that we read the correct number of indices from the file
-		if len( self.tour ) != self.count:
-			sys.stderr.write( 'Solution file contains wrong number of indices; %d != %d\n' % ( len( self.tour), self.count ) )
-			return False
+        # Sanity check that none of the indices are < 0 or >= self.size
+        for t in self.tour:
+            i = int(t)
+            if (i < 0) or (i > self.count):
+                print(t, i)
+                sys.stderr.write('Invalid tour index found in file %s\n' % self.infile)
+                return False
 
-		# Sanity check that none of the indices are < 0 or >= self.size
-		for t in self.tour:
-			i = int( t )
-			if ( i < 0 ) or ( i > self.count ):
-				print( t, i )
-				sys.stderr.write( 'Invalid tour index found in file %s\n' % self.infile )
-				return False
+        # Now "close" the tour by making the trip from the ending position
+        # back to the starting position
+        if len(self.tour):
+            self.tour.append(self.tour[0])
 
-		# Now "close" the tour by making the trip from the ending position
-		# back to the starting position
-		if len( self.tour ):
-			self.tour.append( self.tour[0] )
-
-		return True
+        return True

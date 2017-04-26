@@ -1,3 +1,4 @@
+# coding=utf-8
 # tspart.py
 # 3/7/2012
 #
@@ -63,21 +64,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
-import sys
+from __future__ import print_function
+
 import getopt
-import tempfile
+import os
 import subprocess
-from tspbitcity import *
-from tspsolution import *
+import sys
+import tempfile
+
+from tspbitcity import tspBitCity
+from tspsolution import tspSolution
+
+try:
+    input = raw_input  # Python 2
+except NameError:
+    pass  # Python 3
 
 # Path to the linkern executable
 if sys.platform.lower() == 'win32':
-	LINKERN = 'C:\linkern.exe'
-	use_shell = False
+    LINKERN = 'C:\linkern.exe'
+    use_shell = False
 else:
-	LINKERN = 'linkern'
-	use_shell = True
+    LINKERN = 'linkern'
+    use_shell = True
 
 # linkern switches
 LINKERN_OPTS = ' -r %s -o %s %s'
@@ -89,7 +98,7 @@ linkern_runs = 1
 stipple_report_only = False
 
 # Maximum number of line segments per <path>
-max_segments = int( 40000000000000 )
+max_segments = int(40000000000000)
 
 # Fill color for closed paths
 fill_color = 'none'
@@ -103,41 +112,38 @@ file_contents = 3
 # Name for this SVG layer
 layer_name = None
 
+
 # Output our usage and then exit
 # When exit_stat is non-zero, write to stderr; otherwise, write to stdout
 
-def usage( prog, exit_stat=0 ):
-	str = \
-'Usage: %s [-ch] [-r n] [-s exe] [input-bitmap-file [output-svg-file]]\n' % prog
-	str += \
-' -c, --count\n' + \
-'    Report the number of stipples in the input file and then exit\n' + \
-' -f color, --fill=color\n' + \
-'    Fill color (e.g., red, blue, #ff0000); requires --max-segments=0 (default=%s)\n' % fill_color
-	str += \
-' -h, --help\n' + \
-'    This message\n' + \
-' -L name, --layer=name\n' + \
-'    Layer name (default=None)\n' + \
-' -m n, --max-segments=n\n' + \
-'    Maximum number of line segments per SVG <path> element (default --max-segments=%s)\n' % max_segments
-	str += \
-' --mid, --pre, --post\n' + \
-'    Produce output with only the SVG preamble (--pre), postamble (--post), or neither (--mid)\n' + \
-' -r n, --runs=n\n' + \
-'    Number of linkern runs to take (default --runs=%s)\n' % linkern_runs
-	str += \
-' -s color, --stroke=color\n' + \
-'    Stroke (line) color (e.g., black, green, #000000; default=%s)\n' % line_color
-	str += \
-' -S exe-path, --solver=exe-path\n' + \
-'     File path for the linkern executable (default --solver=%s)\n' % LINKERN
+def usage(prog, exit_stat=0):
+    usage_str = 'Usage: {} [-ch] [-r n] [-s exe] [input-bitmap-file [output-svg-file]]\n'.format(prog)
+    usage_str += ' -c, --count\n' + \
+                 '    Report the number of stipples in the input file and then exit\n' + \
+                 ' -f color, --fill=color\n' + \
+                 '    Fill color (e.g., red, blue, #ff0000); requires --max-segments=0 (default={})\n'.format(fill_color)
+    usage_str += ' -h, --help\n' + \
+                 '    This message\n' + \
+                 ' -L name, --layer=name\n' + \
+                 '    Layer name (default=None)\n' + \
+                 ' -m n, --max-segments=n\n' + \
+                 '    Maximum number of line segments per SVG <path> element (default --max-segments={})\n'.format(max_segments)
+    usage_str += ' --mid, --pre, --post\n' + \
+                 '    Produce output with only the SVG preamble (--pre), postamble (--post), or neither (--mid)\n' + \
+                 ' -r n, --runs=n\n' + \
+                 '    Number of linkern runs to take (default --runs={})\n'.format(linkern_runs)
+    usage_str += ' -s color, --stroke=color\n' + \
+                 '    Stroke (line) color (e.g., black, green, #000000; default={})\n'.format(line_color)
+    usage_str += ' -S exe-path, --solver=exe-path\n' + \
+                 '     File path for the linkern executable (default --solver={})\n'.format(LINKERN)
 
-	if exit_stat:
-		sys.stderr.write( str )
-	else:
-		sys.stdout.write( str )
-	sys.exit( exit_stat )
+    if exit_stat:
+        sys.stderr.write(usage_str)
+    else:
+        sys.stdout.write(usage_str)
+    sys.exit(exit_stat)
+
+
 # Determine the names of our input and output files
 # Input bitmap file name
 # Output SVG file name
@@ -145,88 +151,88 @@ infile = ''
 outfile = ''
 
 try:
-	opts, args = getopt.getopt( sys.argv[1:], 'cf:hl:L:m:r:s:S:',
-		[ 'count', 'fill=', 'help', 'layer=', 'line-color=',
-		  'max-segments=', 'mid', 'post', 'pre', 'runs=',
-		  'stroke=', 'solver=' ] )
+    opts, args = getopt.getopt(sys.argv[1:], 'cf:hl:L:m:r:s:S:',
+                               ['count', 'fill=', 'help', 'layer=', 'line-color=',
+                                'max-segments=', 'mid', 'post', 'pre', 'runs=',
+                                'stroke=', 'solver='])
 except:
-	usage( sys.argv[0], 1 )
+    usage(sys.argv[0], 1)
 
 for opt, val in opts:
-	if opt in ( '-c', '--count' ):
-		stipple_report_only = True
-	elif opt in ( '-f', '--fill' ):
-		fill_color = val
-	elif opt in ( '-h', '--help' ):
-		usage( sys.argv[0], 0 )
-	elif opt in ( '-s', '--stroke', '--line-color' ):
-		line_color = val
-	elif opt in ( '-L', '--layer' ):
-		layer_name = val.strip( '"\'' )
-	elif opt in ( '-m', '--max-segments' ):
-		if int( val ) >= 0:
-			max_segments = int( val )
-	elif opt in ( '--mid' ):
-		file_contents = 0
-	elif opt in ( '--post' ):
-		file_contents = 2
-	elif opt in ( '--pre' ):
-		file_contents = 1
-	elif opt in ( '-r', '--runs' ):
-		linkern_runs = val if int( val ) > 0 else '1'
-	elif opt in ( '-S', '--solver' ):
-		LINKERN = val
+    if opt in ('-c', '--count'):
+        stipple_report_only = True
+    elif opt in ('-f', '--fill'):
+        fill_color = val
+    elif opt in ('-h', '--help'):
+        usage(sys.argv[0], 0)
+    elif opt in ('-s', '--stroke', '--line-color'):
+        line_color = val
+    elif opt in ('-L', '--layer'):
+        layer_name = val.strip('"\'')
+    elif opt in ('-m', '--max-segments'):
+        if int(val) >= 0:
+            max_segments = int(val)
+    elif opt in ('--mid'):
+        file_contents = 0
+    elif opt in ('--post'):
+        file_contents = 2
+    elif opt in ('--pre'):
+        file_contents = 1
+    elif opt in ('-r', '--runs'):
+        linkern_runs = val if int(val) > 0 else '1'
+    elif opt in ('-S', '--solver'):
+        LINKERN = val
 
 # Enforce -max-segments=0 when --fill is used
-if ( int( max_segments ) != 0 ) and ( fill_color != 'none' ):
-	sys.stderr.write( 'Use of -f or --fill requires -max-segments=0\n' )
-	usage( sys.argv[0], 1 )
+if (int(max_segments) != 0) and (fill_color != 'none'):
+    sys.stderr.write('Use of -f or --fill requires -max-segments=0\n')
+    usage(sys.argv[0], 1)
 
 # Look to our command line arguments for possible input/output file names
-if len( args ) == 0:
-	while infile == '':
-		try:
-			infile = raw_input( 'Input file: ' )
-		except:
-			print()
-			sys.exit( 0 )
-	while outfile == '':
-		try:
-			outfile = raw_input( 'Output file: ' )
-		except:
-			print()
-			sys.exit( 0 )
-elif len( args ) == 1:
-	infile = args[0]
-elif len( args ) == 2:
-	infile = args[0]
-	outfile = args[1]
+if len(args) == 0:
+    while infile == '':
+        try:
+            infile = input('Input file: ')
+        except:
+            print()
+            sys.exit(0)
+    while outfile == '':
+        try:
+            outfile = input('Output file: ')
+        except:
+            print()
+            sys.exit(0)
+elif len(args) == 1:
+    infile = args[0]
+elif len(args) == 2:
+    infile = args[0]
+    outfile = args[1]
 else:
-	sys.stderr.write( 'Usage: %s [input-bitmap-file [output-svg-file]]\n' % sys.argv[0] )
-	sys.exit(1)
+    sys.stderr.write('Usage: %s [input-bitmap-file [output-svg-file]]\n' % sys.argv[0])
+    sys.exit(1)
 
 # Convert files to absolute files
-infile = os.path.abspath( infile )
-if not os.path.exists( infile ):
-	sys.stderr.write( 'File %s does not exist!\n' % infile )
-	sys.exit(1)
+infile = os.path.abspath(infile)
+if not os.path.exists(infile):
+    sys.stderr.write('File %s does not exist!\n' % infile)
+    sys.exit(1)
 
 # Now do some fixups, including defaulting the output file name
-if infile.endswith( '.pbm' ) or infile.endswith( '.pts' ):
-	tmp_prefix = infile[:-3]
-	solfile = infile[:-3] + 'tour'
-	if outfile == '':
-		outfile = infile[:-3] + 'svg'
-elif infile.endswith( '.PBM' ) or infile.endswith( '.PTS' ):
-	tmp_prefix = infile[:-3]
-	solfile = infile[:-3] + 'TOUR'
-	if outfile == '':
-		outfile = infile[:-3] + 'SVG'
+if infile.endswith('.pbm') or infile.endswith('.pts'):
+    tmp_prefix = infile[:-3]
+    solfile = infile[:-3] + 'tour'
+    if outfile == '':
+        outfile = infile[:-3] + 'svg'
+elif infile.endswith('.PBM') or infile.endswith('.PTS'):
+    tmp_prefix = infile[:-3]
+    solfile = infile[:-3] + 'TOUR'
+    if outfile == '':
+        outfile = infile[:-3] + 'SVG'
 else:
-	tmp_prefix = os.path.split( infile )[1]
-	solfile = infile + '.tour'
-	if outfile == '':
-		outfile = infile + '.svg'
+    tmp_prefix = os.path.split(infile)[1]
+    solfile = infile + '.tour'
+    if outfile == '':
+        outfile = infile + '.svg'
 
 # Place the solution file into the temporary directory.  We don't need to
 # worrry (too much) about creating it: we're going to make some other calls
@@ -236,32 +242,32 @@ else:
 solfile = os.path.join(tempfile.gettempdir(), os.path.basename(solfile))
 
 # Load the bitmap file
-print( 'Loading bitmap file %s ... ' % infile )
+print('Loading bitmap file %s ... ' % infile)
 cities = tspBitCity()
-if not cities.load( infile ):
-	sys.exit(1)
-print( 'done; %d stipples' % len( cities.coordinates ) )
+if not cities.load(infile):
+    sys.exit(1)
+print('done; %d stipples' % len(cities.coordinates))
 if stipple_report_only:
-	sys.exit( 0 )
+    sys.exit(0)
 
 # Open a temporary file to hold the TSPLIB file
-tsp_fd, tspfile = tempfile.mkstemp( suffix='.tsp', prefix=tmp_prefix, text=True )
+tsp_fd, tspfile = tempfile.mkstemp(suffix='.tsp', prefix=tmp_prefix, text=True)
 if tsp_fd < 0:
-	sys.stderr.write( 'Unable to open a temporary file\n' )
-	sys.exit(1)
+    sys.stderr.write('Unable to open a temporary file\n')
+    sys.exit(1)
 
 # Convert this file descriptor to a Python file object
 tsp_f = os.fdopen(tsp_fd, 'w')
 
 # Now write the TSPLIB file
-print( 'Writing TSP solver input file %s ... ' % tspfile )
-cities.write_tspfile( tspfile, tsp_f )
-print( 'done' )
+print('Writing TSP solver input file %s ... ' % tspfile)
+cities.write_tspfile(tspfile, tsp_f)
+print('done')
 
 # Run the solver
-print( 'Running TSP solver ... ' )
-cmd = LINKERN + LINKERN_OPTS % ( linkern_runs, solfile, tspfile )
-pipe = subprocess.Popen( cmd, shell=use_shell )
+print('Running TSP solver ... ')
+cmd = LINKERN + LINKERN_OPTS % (linkern_runs, solfile, tspfile)
+pipe = subprocess.Popen(cmd, shell=use_shell)
 status = pipe.wait()
 
 # Remove the temporary TSPLIB file
@@ -269,32 +275,32 @@ os.unlink(tspfile)
 
 # Did the solver succeed?
 if status:
-	# No, something went wrong
-	sys.stderr.write( 'Solver failed; status = %s\n' % status )
-	os.unlink( solfile )
-	sys.exit( 1 )
+    # No, something went wrong
+    sys.stderr.write('Solver failed; status = %s\n' % status)
+    os.unlink(solfile)
+    sys.exit(1)
 
 # Solver succeeded
-print( '\nSolver finished successfully' )
+print('\nSolver finished successfully')
 
 # Load the solution (a tour)
-print( 'Loading solver results from %s ... ' % solfile )
+print('Loading solver results from %s ... ' % solfile)
 solution = tspSolution()
-if not solution.load( solfile ):
-	sys.stderr.write( 'Unable to load the solution file\n' )
-	os.unlink( solfile )
-	sys.exit( 1 )
-print( 'done' )
+if not solution.load(solfile):
+    sys.stderr.write('Unable to load the solution file\n')
+    os.unlink(solfile)
+    sys.exit(1)
+print('done')
 
 # Remove the tour file
 os.unlink(solfile)
 
 # Now write the SVG file
-print( 'Writing SVG file %s ... ' % outfile )
-if not cities.write_tspsvg( outfile, solution.tour, max_segments,
-							line_color, fill_color, file_contents,
-							layer_name ):
-	# write_tspsvg() takes care of removing outfile
-	sys.stderr.write( 'Error writing SVG file\n' )
-	sys.exit( 1 )
-print( 'done' )
+print('Writing SVG file %s ... ' % outfile)
+if not cities.write_tspsvg(outfile, solution.tour, max_segments,
+                           line_color, fill_color, file_contents,
+                           layer_name):
+    # write_tspsvg() takes care of removing outfile
+    sys.stderr.write('Error writing SVG file\n')
+    sys.exit(1)
+print('done')
