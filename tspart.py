@@ -212,9 +212,9 @@ else:
     sys.exit(1)
 
 # Convert files to absolute files
-infile = os.path.abspath(infile)
+infile = os.path.abspath(infile.strip())
 if not os.path.exists(infile):
-    sys.stderr.write('File %s does not exist!\n' % infile)
+    sys.stderr.write('File "{}" does not exist!\n'.format(infile))
     sys.exit(1)
 
 # Now do some fixups, including defaulting the output file name
@@ -235,7 +235,7 @@ else:
         outfile = infile + '.svg'
 
 # Place the solution file into the temporary directory.  We don't need to
-# worrry (too much) about creating it: we're going to make some other calls
+# worry (too much) about creating it: we're going to make some other calls
 # to open a temporary file and those calls should instantiate the directory.
 # And, since we check for errors on those calls, we should catch any problems.
 
