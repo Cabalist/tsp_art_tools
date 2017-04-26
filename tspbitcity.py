@@ -85,7 +85,6 @@ class tspBitCity:
     def __load_pbm_p4(self, f):
 
         assert (self.width > 0) and (self.height > 0)
-        assert f
 
         self.coordinates = []
 
@@ -106,19 +105,23 @@ class tspBitCity:
             row_bytes = f.read(nbytes)
 
             # Perform a sanity check
-            if (row_bytes == '') or (row_bytes == '\n'):
-                sys.stderr.write('1 Premature end-of-data encountered in %s\n' % self.infile)
+            if (row_bytes == b'') or (row_bytes == b'\n'):
+                sys.stderr.write('1 Premature end-of-data encountered in {}\n'.format(self.infile))
                 return False
 
             # And start at the first byte of the line read
             column_byte_index = 0
 
             # Convert the unsigned char byte to an integer
-            column_byte = int(ord(row_bytes[0]))
+            column_byte = row_bytes[0]
 
             # Now process this row from left to right, x = 0 to x = w - 1
-            pixel_mask = int(0x80)
+            pixel_mask = 0b10000000
             for column in range(0, self.width):
+
+                # Hack for Python2/3 compatibility
+                if not isinstance(column_byte, int):
+                    column_byte = ord(column_byte)
 
                 # See if this bit is lit
                 if pixel_mask & column_byte:
@@ -132,7 +135,7 @@ class tspBitCity:
                 if pixel_mask == 0x00:
                     column_byte_index += 1
                     if column_byte_index < nbytes:
-                        column_byte = ord(row_bytes[column_byte_index])
+                        column_byte = row_bytes[column_byte_index]
                         pixel_mask = int(0x80)
                     elif column < (self.width - 1):
                         # Something has gone wrong: we didn't read enough bytes?
@@ -288,10 +291,10 @@ class tspBitCity:
         # For PBM files this will always be two bytes followed by a \n
         # For other image types, this line could be who knows what.  Hence
         # our use of a size argument to readline()
-        magic_number = f.readline(4).strip()
+        magic_number = bytes(f.readline(4))
 
         # PBM files must be P1 or P4
-        if magic_number in ['P4', 'P1']:
+        if magic_number in [b'P4\n', b'P1\n']:
 
             # File is a PBM bitmap file
 
@@ -303,7 +306,7 @@ class tspBitCity:
             self.width, self.height = (0, 0)
             while True:
                 line = f.readline()
-                if not line.startswith('#'):
+                if not line.startswith(b'#'):
                     self.width, self.height = tuple(map(int, line.split()))
                     break
 
@@ -324,10 +327,9 @@ class tspBitCity:
             # row = 0 corresponds to the bottom of the bitmap
             # column = 0 corresponds to the left edge of the bitmap
 
-            ok = self.__load_pbm_p4(f) if magic_number[1] != '1' \
-                else self.__load_pbm_p1(f)
+            ok = self.__load_pbm_p4(f) if magic_number[1] != '1' else self.__load_pbm_p1(f)
 
-        elif magic_number == '# x-':
+        elif magic_number == b'# x-':
 
             # File may be an (x, y, radius) coordinate file
             line = f.readline().strip()
