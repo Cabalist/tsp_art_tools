@@ -21,11 +21,11 @@ The basic steps are:
 
 
 ## Quickstart
-1. Install the necessary dependecies
+1. Install the necessary dependencies
 2. Stipple your image using Gimp
 3. Run `python3 tspart.py ./path/to/your/image.jpg`  
     This will generate `image.svg` in your image path
-4. **OPTIONAL** Remove unnecssary lines in Gimp 
+4. **OPTIONAL** Remove unnecessary lines in Gimp 
 5. Use `gocupi svg 200 image.svg` to create your image
 
 ## Installation
