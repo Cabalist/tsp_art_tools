@@ -39,13 +39,10 @@
 
 from __future__ import division
 
+import argparse
 import os
 import sys
-
-try:
-    from cgi import escape
-except ImportError:
-    from html import escape
+from cgi import escape
 
 try:
     input = raw_input  # Python 2
@@ -442,37 +439,37 @@ class TSPBitCity(object):
         # Write the SVG preamble?
         if 1 & int(file_contents):
             f.write(
-                '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' 
-                '<!-- Created with the Eggbot TSP art toolkit (http://egg-bot.com) -->\n' 
-                '\n' 
-                '<svg xmlns="http://www.w3.org/2000/svg"\n' 
-                '     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"\n' 
-                '     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"\n' 
-                '     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n' 
-                '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n' 
-                '     xmlns:cc="http://creativecommons.org/ns#"\n' 
-                '     height="{h}"\n' 
-                '     width="{w}">\n' 
-                '  <sodipodi:namedview\n' 
-                '            showgrid="false"\n' 
-                '            showborder="true"\n' 
-                '            inkscape:showpageshadow="false"/>\n' 
-                '  <metadata>\n' 
-                '    <rdf:RDF>\n' 
-                '      <cc:Work rdf:about="">\n' 
-                '        <dc:format>image/svg+xml</dc:format>\n' 
-                '        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />\n' 
-                '        <dc:subject>\n' 
-                '          <rdf:Bag>\n' 
-                '            <rdf:li>Egg-Bot</rdf:li>\n' 
-                '            <rdf:li>Eggbot</rdf:li>\n' 
-                '            <rdf:li>TSP</rdf:li>\n' 
-                '            <rdf:li>TSP art</rdf:li>\n' 
-                '          </rdf:Bag>\n' 
-                '        </dc:subject>\n' 
-                '        <dc:description>TSP art created with the Eggbot TSP art toolkit (http://egg-bot.com)</dc:description>\n' 
-                '      </cc:Work>\n' 
-                '    </rdf:RDF>\n' 
+                '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+                '<!-- Created with the Eggbot TSP art toolkit (http://egg-bot.com) -->\n'
+                '\n'
+                '<svg xmlns="http://www.w3.org/2000/svg"\n'
+                '     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"\n'
+                '     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"\n'
+                '     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+                '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n'
+                '     xmlns:cc="http://creativecommons.org/ns#"\n'
+                '     height="{h}"\n'
+                '     width="{w}">\n'
+                '  <sodipodi:namedview\n'
+                '            showgrid="false"\n'
+                '            showborder="true"\n'
+                '            inkscape:showpageshadow="false"/>\n'
+                '  <metadata>\n'
+                '    <rdf:RDF>\n'
+                '      <cc:Work rdf:about="">\n'
+                '        <dc:format>image/svg+xml</dc:format>\n'
+                '        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />\n'
+                '        <dc:subject>\n'
+                '          <rdf:Bag>\n'
+                '            <rdf:li>Egg-Bot</rdf:li>\n'
+                '            <rdf:li>Eggbot</rdf:li>\n'
+                '            <rdf:li>TSP</rdf:li>\n'
+                '            <rdf:li>TSP art</rdf:li>\n'
+                '          </rdf:Bag>\n'
+                '        </dc:subject>\n'
+                '        <dc:description>TSP art created with the Eggbot TSP art toolkit (http://egg-bot.com)</dc:description>\n'
+                '      </cc:Work>\n'
+                '    </rdf:RDF>\n'
                 '  </metadata>\n'.format(h=self.height, w=self.width))
 
         if label:
@@ -544,50 +541,31 @@ class TSPBitCity(object):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("input", type=str, help="Path to input file")
+    parser.add_argument('-o', "--output", type=str, help="Path to output file")
+    args = parser.parse_args()
 
-    def fixup_args(argv):
-        if len(argv) == 0:
-            # Prompt for input and output file names
-            infile = ''
-            outfile = ''
-            while infile == '':
-                infile = input('Input file: ')
-            while outfile == '':
-                outfile = input('Output file: ')
-            return infile, outfile
-        elif len(argv) == 1:
-            # Assume output file name is derived from the input file name
-            if argv[0].endswith('.pbm'):
-                # Output file name is input file name - 'pbm' + 'tsp'
-                return argv[0], argv[0][:-3] + 'tsp'
-            elif argv[0].endswith('.PBM'):
-                # Output file name is input file name - 'PBM' + 'TSP'
-                return argv[0], argv[0][:-3] + 'TSP'
-            elif argv[0].endswith('.pts'):
-                return argv[0], argv[0][:-3] + 'tsp'
-            elif os.path.exists(argv[0]):
-                # Output file name is input file name + '.tsp'
-                return argv[0], argv[0] + '.tsp'
-            elif os.path.exists(argv[0] + '.pbm'):
-                return argv[0] + '.pbm', argv[0] + '.tsp'
-            elif os.path.exists(argv[0] + '.PBM'):
-                return argv[0] + '.PBM', argv[0] + '.TSP'
-            elif os.path.exists(argv[0] + '.pts'):
-                return argv[0] + '.pts', argv[0] + '.tsp'
-        elif len(argv) == 2:
-            return argv[0], argv[1]
-        else:
-            return '', ''
-
-
-    infilepath, outfilepath = fixup_args(sys.argv[1:])
-
-    if not infilepath or not outfilepath:
-        sys.stderr.write('Usage: {} [input-bitmap-file [output-tsplib-file]]\n'.format(sys.argv[0]))
+    # Convert files to absolute files
+    args.input = os.path.abspath(args.input.strip())
+    if not os.path.exists(args.input):
+        sys.stderr.write('File "{}" does not exist!\n'.format(args.input))
         sys.exit(1)
+
+    # Now do some fixups, including defaulting the output file name
+    raw_path_without_ext, input_ext = os.path.splitext(args.input)
+    tmp_filename_without_ext = os.path.split(raw_path_without_ext)[1]
+    if args.output is None:
+
+        if input_ext in ['.pbm', '.pts']:
+            args.output = raw_path_without_ext + '.tsp'
+        elif input_ext in ['.PBM', '.PTS']:
+            args.output = raw_path_without_ext + '.TSP'
+        else:
+            args.output = raw_path_without_ext + '.tsp'
 
     citymap = TSPBitCity()
-    if not citymap.load(infilepath):
+    if not citymap.load(args.input):
         sys.exit(1)
 
-    citymap.write_tspfile(outfilepath)
+    citymap.write_tspfile(args.output)
