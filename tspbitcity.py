@@ -51,11 +51,10 @@ except NameError:
 
 
 class TSPBitCity(object):
-    # When presented with a collection of floating point (x,y) coordinates,
-    # we normalize their bounding box to have a height and width of BOXSIZE
-    BOXSIZE = float(800)
-
     def __init__(self):
+        # When presented with a collection of floating point (x,y) coordinates,
+        # we normalize their bounding box to have a height and width of BOXSIZE
+        self.BOXSIZE = float(800)
 
         # We save the input bitmap file name for purposes of error reporting
         # and generating a default output file name
@@ -85,8 +84,17 @@ class TSPBitCity(object):
 
         self.coordinates = []
 
-    # Load a PBM of type P4
     def _load_pbm_p4(self, f):
+        """
+        Load a PBM of type P4
+        
+        Args:
+            f (io.BinaryIO): File handle for bitmap image 
+
+        Returns:
+            bool:
+
+        """
         if self.width <= 0:
             raise ValueError("Width of {} must be greater than 0".format(self.infile))
         if self.height <= 0:
@@ -111,7 +119,7 @@ class TSPBitCity(object):
             row_bytes = f.read(nbytes)
 
             # Perform a sanity check
-            if (row_bytes == b'') or (row_bytes == b'\n'):
+            if not row_bytes or row_bytes == b'\n':
                 sys.stderr.write('1 Premature end-of-data encountered in {}\n'.format(self.infile))
                 return False
 
@@ -125,7 +133,7 @@ class TSPBitCity(object):
             # Now process this row from left to right, x = 0 to x = w - 1
             for column in range(0, self.width):
 
-                # Hack for Python2/3 compatibility
+                # Hack for Python2 compatibility
                 # Convert the unsigned char byte to an integer
                 if not isinstance(column_byte, int):
                     column_byte = ord(column_byte)
@@ -140,7 +148,7 @@ class TSPBitCity(object):
 
                 # See if it's time to move to the next byte in the input line
                 # Reinitialize the steps
-                if pixel_mask == 0x00:
+                if pixel_mask == 0b00000000:
                     column_byte_index += 1
                     if column_byte_index < nbytes:
                         column_byte = row_bytes[column_byte_index]
@@ -152,34 +160,44 @@ class TSPBitCity(object):
 
         return True
 
-    # Load a PBM of type P1
     def _load_pbm_p1(self, f):
 
+        """
+        Load a PBM of type P1
+        
+        Notes:
+            PBM file goes from the top of the bitmap (y = h-1) to the
+            bottom of the bitmap (y = 0), and from the left of the bitmap
+            (x = 0) to the right of the bitmap (x = w)
+    
+            Each line of the file contains a string of one or more characters
+            from the alphabet { '0', '1', '#', '\n' } where
+    
+              '0' -- a zero bit in the bitmap
+              '1' -- a one bit in the bitmap
+              '#' -- introduces a comment line
+              '\n' -- a line record terminator
+    
+            Note the last line of the file may possibly omit the trailing LF.
+            That is normal for PBM files of type P1.
+    
+            Each line from the file may be a portion of one or more rows
+            of the bitmap.  So, it's up to use to track which row and column
+            we are at in the bitmap.
+
+        Args:
+            f (io.BinaryIO): File handle for bitmap image 
+
+        Returns:
+            bool:
+
+        """
         if self.width <= 0:
             raise ValueError("Width of {} must be greater than 0".format(self.infile))
         if self.height <= 0:
             raise ValueError("Height of {} must be greater than 0".format(self.infile))
 
         self.coordinates = []
-
-        # PBM file goes from the top of the bitmap (y = h-1) to the
-        # bottom of the bitmap (y = 0), and from the left of the bitmap
-        # (x = 0) to the right of the bitmap (x = w)
-
-        # Each line of the file contains a string of one or more characters
-        # from the alphabet { '0', '1', '#', '\n' } where
-        #
-        #   '0' -- a zero bit in the bitmap
-        #   '1' -- a one bit in the bitmap
-        #   '#' -- introduces a comment line
-        #   '\n' -- a line record terminator
-        #
-        # Note the last line of the file may possibly omit the trailing LF.
-        # That is normal for PBM files of type P1.
-        #
-        # Each line from the file may be a portion of one or more rows
-        # of the bitmap.  So, it's up to use to track which row and column
-        # we are at in the bitmap.
 
         # Our column index
         column = 0
@@ -209,7 +227,7 @@ class TSPBitCity(object):
                 if each_byte == '1':
                     self.coordinates.append((column, row))
                 elif each_byte != '0':
-                    sys.stderr.write('Invalid content in %s\n' % self.infile)
+                    sys.stderr.write("Invalid content in {}\n".format(self.infile))
                     return False
 
                 # Move to the next column
@@ -223,19 +241,22 @@ class TSPBitCity(object):
 
         # All done
         # Perform a sanity check: we should be at the start of row -1
-        if (column == 0) and (row == -1):
+        if column == 0 and row == -1:
             return True
 
         # Something bad happened
-        sys.stderr.write(' Premature end-of-file encountered in %s\n' % self.infile)
+        sys.stderr.write(' Premature end-of-file encountered in {}\n'.format(self.infile))
         return False
 
-    # Load a file in which each line has the format
-    #
-    #    x-coord y-coord radius
-
     def _load_xyr(self, f):
+        """
+        Load a file in which each line has the format
 
+        x-coord y-coord radius
+
+        Args:
+            f (io.BinaryIO): File handle for bitmap image 
+        """
         self.coordinates = []
         self.width, self.height = int(self.BOXSIZE), int(self.BOXSIZE)
         px, py = [], []
@@ -248,7 +269,7 @@ class TSPBitCity(object):
 
             vals = line.strip().split(' ')
             if len(vals) not in [2, 3]:
-                sys.stderr.write('Invalid content in file %s\n' % self.infile)
+                sys.stderr.write('Invalid content in file {}\n'.format(self.infile))
                 return False
 
             px.append(float(vals[0]))
@@ -265,11 +286,11 @@ class TSPBitCity(object):
 
         # Note we pretend the points all have radius zero....
 
-        span = float(fmax - fmin)
+        span = fmax - fmin
         scale = self.BOXSIZE / span if span > 0 else 1
         # Can't do "for x, y in px, py:" as the lists are too large
-        # resulting in 'too manu values to unpack'
-        for i in range(0, len(px)):
+        # resulting in 'too many values to unpack'
+        for i in range(len(px)):
             self.coordinates.append((int(round((px[i] - fmin) * scale)),
                                      int(round((py[i] - fmin) * scale))))
 
@@ -277,6 +298,15 @@ class TSPBitCity(object):
 
     def load(self, infile):
 
+        """
+
+        Args:
+            infile (str): 
+
+        Returns:
+            bool: loading status
+
+        """
         self.infile = infile
 
         # Open the input file
@@ -346,54 +376,54 @@ class TSPBitCity(object):
         # message already
         return ok
 
-    def write_tspfile(self, outfile='', f=None, infile='TSPART'):
+    def write_tspfile(self, output_path='', output_filehandle=None, infile='TSPART'):
 
-        if not f:
+        if output_filehandle is None:
             # Deal with funky outfile names
-            if not outfile:
+            if not output_path:
                 if self.infile.endswith('.pbm'):
-                    outfile = self.infile[:-3] + 'tsp'
+                    output_path = self.infile[:-3] + 'tsp'
                 elif self.infile.endswith('.PBM'):
-                    outfile = self.infile[:-3] + 'TSP'
+                    output_path = self.infile[:-3] + 'TSP'
                 else:
-                    outfile = self.infile + '.tsp'
+                    output_path = self.infile + '.tsp'
 
             # Create the output file
             # This may generate an exception which is fine by us
-            f = open(outfile, 'w')
+            output_filehandle = open(output_path, 'w')
 
         # And now write the contents of the TSPLIB file
         try:
             # Header
-            f.write('NAME:{}\n'.format(infile))
-            f.write('TYPE:TSP\n')
-            f.write('DIMENSION:{:d}\n'.format(len(self.coordinates)))
-            f.write('EDGE_WEIGHT_TYPE:EUC_2D\n')
-            f.write('NODE_COORD_TYPE:TWOD_COORDS\n')
+            output_filehandle.write('NAME:{}\n'.format(infile))
+            output_filehandle.write('TYPE:TSP\n')
+            output_filehandle.write('DIMENSION:{:d}\n'.format(len(self.coordinates)))
+            output_filehandle.write('EDGE_WEIGHT_TYPE:EUC_2D\n')
+            output_filehandle.write('NODE_COORD_TYPE:TWOD_COORDS\n')
 
             # list of coordinates
-            f.write('NODE_COORD_SECTION:\n')
+            output_filehandle.write('NODE_COORD_SECTION:\n')
             city_number = 0
             for city in self.coordinates:
-                f.write('{:d} {:d} {:d}\n'.format(city_number, city[0], city[1]))
+                output_filehandle.write('{:d} {:d} {:d}\n'.format(city_number, city[0], city[1]))
                 city_number += 1
 
             # And finally an EOF record
-            f.write('EOF:\n')
+            output_filehandle.write('EOF:\n')
 
         except:
             # Remove the incomplete file
             # Note on Windows we must close the file before deleting it
-            f.close()
-            if outfile != '':
-                os.unlink(outfile)
+            output_filehandle.close()
+            if output_path != '':
+                os.unlink(output_path)
             # Now re-raise the exception
             raise
 
-        f.close()
+        output_filehandle.close()
 
     # max_segments == 0 implies unlimited number of segments per path
-    def write_tspsvg(self, outfile, tour, max_segments=400,
+    def write_tspsvg(self, output_path, tour, max_segments=400,
                      line_color='#000000', fill_color='none',
                      file_contents='3', label=None):
 
@@ -416,7 +446,7 @@ class TSPBitCity(object):
         if not fill_color or max_segments:
             fill_color = 'none'
 
-        f = open(outfile, 'w')
+        f = open(output_path, 'w')
 
         # Write the SVG preamble?
         if 1 & int(file_contents):
@@ -471,7 +501,7 @@ class TSPBitCity(object):
             if (city_index < 0) or (city_index >= max_index):
                 sys.stderr.write('TSP tour contains an invalid city index, {}\n'.format(city_index))
                 f.close()
-                os.unlink(outfile)
+                os.unlink(output_path)
                 return False
 
             if not path:
