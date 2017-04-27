@@ -34,7 +34,7 @@ This package has no python dependencies but it does require an external package 
 #### OS X:
 
   Install homebrew (https://brew.sh/)
-  run brew install homebrew/science/concorde`
+  run `brew install homebrew/science/concorde`
 
 #### Windows:
   While binary executables are available for concorde and linkern for
