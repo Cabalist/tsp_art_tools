@@ -281,72 +281,66 @@ class TSPBitCity(object):
 
         # Open the input file
         # This may raise an exception which is fine by us
-        f = open(self.infile, 'rb')
+        with open(self.infile, 'rb') as f:
 
-        # Get the magic number
-        # For PBM files this will always be two bytes followed by a \n
-        # For other image types, this line could be who knows what.  Hence
-        # our use of a size argument to readline()
-        magic_number = f.readline(4)
+            # Get the magic number
+            # For PBM files this will always be two bytes followed by a \n
+            # For other image types, this line could be who knows what.  Hence
+            # our use of a size argument to readline()
+            magic_number = f.readline(4)
 
-        # PBM files must be P1 or P4
-        if magic_number in [b'P4\n', b'P1\n']:
+            # PBM files must be P1 or P4
+            if magic_number in [b'P4\n', b'P1\n']:
 
-            # File is a PBM bitmap file
+                # File is a PBM bitmap file
 
-            # Loop until we read the bitmap dimensions
-            # NOTE: we cannot use "while line in f:" since that is incompatible
-            # with later using f.read().  If the file is of type P4, then we
-            # will need to use f.read() to obtain the bitmap
+                # Loop until we read the bitmap dimensions
+                # NOTE: we cannot use "while line in f:" since that is incompatible
+                # with later using f.read().  If the file is of type P4, then we
+                # will need to use f.read() to obtain the bitmap
 
-            self.width, self.height = (0, 0)
-            while True:
-                line = f.readline()
-                if not line.startswith(b'#'):
-                    self.width, self.height = tuple(map(int, line.split()))
-                    break
+                self.width, self.height = (0, 0)
+                while True:
+                    line = f.readline()
+                    if not line.startswith(b'#'):
+                        self.width, self.height = tuple(map(int, line.split()))
+                        break
 
-            # Did we actually read anything (useful)?
-            if (self.width == 0) or (self.height == 0):
-                sys.stderr.write('Unable to read sensible bitmap dimensions for %s\n' % self.infile)
-                f.close()
+                # Did we actually read anything (useful)?
+                if not self.width or not self.height:
+                    sys.stderr.write('Unable to read sensible bitmap dimensions for {}\n'.format(self.infile))
+                    return False
+
+                # Now read the bitmap
+                # cities will be a list of 2-tuples, each 2-tuple being the (x, y)
+                # coordinate of a 1 bit in the bitmap.  These (x, y) coordinates
+                # correspond to row and column numbers with
+                #
+                #    0 <= row <= height - 1
+                #    0 <= column <= width - 1
+                #
+                # row = 0 corresponds to the bottom of the bitmap
+                # column = 0 corresponds to the left edge of the bitmap
+
+                ok = self.__load_pbm_p4(f) if magic_number == b'P4\n' else self.__load_pbm_p1(f)
+
+            elif magic_number == b'# x-':
+
+                # File may be an (x, y, radius) coordinate file
+                line = f.readline().strip()
+                if line != 'coord y-coord radius':
+                    sys.stderr.write('Input file {} is not a supported file type\n'.format(self.infile))
+                    sys.stderr.write('Must be a PBM file or file of (x, y) coordinates. [err=1]\n')
+                    return False
+
+                ok = self.__load_xyr(f)
+
+            else:
+
+                # Unsupported file type
+                sys.stderr.write('Input file {} is not a supported file type\n'.format(self.infile))
+                sys.stderr.write('Must be a PBM file or file of (x, y) coordinates. [err=2]\n')
                 return False
-
-            # Now read the bitmap
-            # cities will be a list of 2-tuples, each 2-tuple being the (x, y)
-            # coordinate of a 1 bit in the bitmap.  These (x, y) coordinates
-            # correspond to row and column numbers with
-            #
-            #    0 <= row <= height - 1
-            #    0 <= column <= width - 1
-            #
-            # row = 0 corresponds to the bottom of the bitmap
-            # column = 0 corresponds to the left edge of the bitmap
-
-            ok = self.__load_pbm_p4(f) if magic_number == b'P4\n' else self.__load_pbm_p1(f)
-
-        elif magic_number == b'# x-':
-
-            # File may be an (x, y, radius) coordinate file
-            line = f.readline().strip()
-            if line != 'coord y-coord radius':
-                sys.stderr.write('Input file %s is not a supported file type\n' % self.infile)
-                sys.stderr.write('Must be a PBM file or file of (x, y) coordinates. [err=1]\n')
-                f.close()
-                return False
-
-            ok = self.__load_xyr(f)
-
-        else:
-
-            # Unsupported file type
-            sys.stderr.write('Input file %s is not a supported file type\n' % self.infile)
-            sys.stderr.write('Must be a PBM file or file of (x, y) coordinates. [err=2]\n')
-            f.close()
-            return False
-
-        # All done with the input file
-        f.close()
 
         # If ok is False, then __load_xxx() will have printed an error
         # message already
