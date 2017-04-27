@@ -277,19 +277,7 @@ class TSPBitCity(object):
 
     def load(self, infile):
 
-        # Deal with a missing .pbm extension
         self.infile = infile
-        if not os.path.exists(self.infile):
-            if os.path.exists(self.infile + '.pbm'):
-                self.infile += '.pbm'
-            elif os.path.exists(self.infile + '.PBM'):
-                self.infile += '.PBM'
-            elif os.path.exists(self.infile + '.pts'):
-                self.infile += '.pts'
-            else:
-                # Well, we're going to get an error when we try
-                # to open that input file....
-                pass
 
         # Open the input file
         # This may raise an exception which is fine by us
