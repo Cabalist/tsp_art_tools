@@ -1,9 +1,3 @@
-5 October 2010
-
-This directory contains some tools for generating TSP art for the Eggbot.
-These tools have only been tested quite a bit under OS X 10.6+
-These tools have had very limited testing on Windows XP SP3.
-
  25 Sep 2010 v0.1   Initial version
  27 Sep 2010 v0.1   Added --count and --runs options
  28 Sep 2010 v0.3   Added support for (x,y) and (x,y,radius) files
@@ -32,45 +26,8 @@ These tools have had very limited testing on Windows XP SP3.
                       longer done.
   26 Apr 2016 v?    Updated code for Python3  Removed 'build-concorde-osx.sh' in
                       favor of running `brew install homebrew/science/concorde`
+                      Removed unused code.  Rewrite for readability and simplicity.
+                      Updated Readme.
 
 
-Installation on OS X:
-  Install homebrew (https://brew.sh/)
-  run brew install homebrew/science/concorde`
 
-Installation on Windows:
-  While binary executables are available for concorde and linkern for
-  Windows, they require a minimal cygwin install.  See
-  http://www.tsp.gatech.edu/concorde/downloads/downloads.htm
-
-cmyk.jsx
-  Photoshop script for producing CMYK "separations" for Color TSP art.
-  Tested on Mac OS X 10.6.4 with Photoshop CS5.
-
-STIPPLING.txt
-  Fifty words or less explaining how to do quick stippling in gimp.  A
-  useful means of getting a bitmap to feed to tspart.py.
-
-tspart.py
-  Python script to accept as input a black and white bitmap file in PBM
-  format and produce as output a SVG file (TSP art) arrived at by using
-  the fast, heuristic TSP solver linkern.
-
-  In addition to PBM files, a simple format allowing (x, y) or (x, y, radius)
-  coordinates is also supported.  (E.g., the format output by some stippling
-  software.) See the comments in tspbitcity.py for further details.
-
-tspbitcity.py
-  Python class used by tspart.py.  This is the class which reads in a
-  PBM file and can generate a TSPLIB format file for concorde and linkern.
-  Also, using a TSP tour, it can generate an SVG file.
-
-  If run as a standalone Python script, tspbitcity.py will generate a
-  TSPLIB file from a PBM file.
-
-tspsolution.py
-  Python class used by tspart.py.  This class reads a solution file from
-  either concorde or linkern and determines the "tour".  This "tour" is
-  then used by tspart.py to generate the output SVG file.
-
--- finit --
