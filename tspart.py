@@ -71,6 +71,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import shutil
 
 from tspbitcity import TSPBitCity
 from tspsolution import TSPSolution
@@ -117,17 +118,17 @@ if __name__ == "__main__":
 
     # Now do some fixups, including defaulting the output file name
     raw_path_without_ext, input_ext = os.path.splitext(args.input)
-    tmp_filename_without_ext = os.path.split(raw_path_without_ext)[1]
+    filename_without_ext = os.path.split(raw_path_without_ext)[1]
     if input_ext in ['.pbm', '.pts']:
-        solution_filepath = tmp_filename_without_ext + ".tour"
+        solution_filepath = filename_without_ext + ".tour"
         if args.output is None:
             args.output = raw_path_without_ext + '.svg'
     elif input_ext in ['.PBM', '.PTS']:
-        solution_filepath = tmp_filename_without_ext + ".TOUR"
+        solution_filepath = filename_without_ext + ".TOUR"
         if args.output is None:
             args.output = raw_path_without_ext + '.SVG'
     else:
-        solution_filepath = tmp_filename_without_ext + ".tour"
+        solution_filepath = filename_without_ext + ".tour"
         if args.output is None:
             args.output = raw_path_without_ext + '.svg'
 
@@ -147,25 +148,22 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Open a temporary file to hold the TSPLIB file
-    tspfile_descriptor, tspfile_path = tempfile.mkstemp(suffix='.tsp', prefix=tmp_filename_without_ext, text=True)
-    if tspfile_descriptor < 0:
-        sys.stderr.write('Unable to open a temporary file\n')
-        sys.exit(1)
+    tmp_dir = tempfile.mkdtemp()
+    tmp_filename = filename_without_ext + '.tsp'
+    tspfile_path = os.path.join(tmp_dir, tmp_filename)
 
-    # Convert this file descriptor to a Python file object
-    with os.fdopen(tspfile_descriptor, 'w') as tspfile_handle:
-        # Now write the TSPLIB file
-        print('Writing TSP solver input file {} ... '.format(tspfile_path))
-        cities.write_tspfile(tspfile_path, tspfile_handle)
-        print('done')
+    # Now write the TSPLIB file
+    print('Writing TSP solver input file {} ... '.format(tspfile_path))
+    cities.write_tspfile(tspfile_path)
+    print('done')
 
-        # Run the solver
-        print('Running TSP solver ... ')
-        cmd = [args.solver, '-r', str(args.runs), '-o', solution_filepath, tspfile_path]
-        status = subprocess.call(cmd, shell=False)
+    # Run the solver
+    print('Running TSP solver ... ')
+    cmd = [args.solver, '-r', str(args.runs), '-o', solution_filepath, tspfile_path]
+    status = subprocess.call(cmd, shell=False)
 
-    # Remove the temporary TSPLIB file
-    os.unlink(tspfile_path)
+    # Remove the temporary directory
+    shutil.rmtree(tmp_dir)
 
     # Did the solver succeed?
     if status:

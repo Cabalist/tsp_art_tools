@@ -376,178 +376,151 @@ class TSPBitCity(object):
         # message already
         return ok
 
-    def write_tspfile(self, output_path='', output_filehandle=None, infile='TSPART'):
-
-        if output_filehandle is None:
-            # Deal with funky outfile names
-            if not output_path:
-                if self.infile.endswith('.pbm'):
-                    output_path = self.infile[:-3] + 'tsp'
-                elif self.infile.endswith('.PBM'):
-                    output_path = self.infile[:-3] + 'TSP'
-                else:
-                    output_path = self.infile + '.tsp'
-
-            # Create the output file
-            # This may generate an exception which is fine by us
-            output_filehandle = open(output_path, 'w')
-
-        # And now write the contents of the TSPLIB file
-        try:
+    def write_tspfile(self, output_path, infile='TSPART'):
+        with open(output_path, 'w') as output:
             # Header
-            output_filehandle.write('NAME:{}\n'.format(infile))
-            output_filehandle.write('TYPE:TSP\n')
-            output_filehandle.write('DIMENSION:{:d}\n'.format(len(self.coordinates)))
-            output_filehandle.write('EDGE_WEIGHT_TYPE:EUC_2D\n')
-            output_filehandle.write('NODE_COORD_TYPE:TWOD_COORDS\n')
+            output.write('NAME:{}\n'.format(infile))
+            output.write('TYPE:TSP\n')
+            output.write('DIMENSION:{:d}\n'.format(len(self.coordinates)))
+            output.write('EDGE_WEIGHT_TYPE:EUC_2D\n')
+            output.write('NODE_COORD_TYPE:TWOD_COORDS\n')
 
             # list of coordinates
-            output_filehandle.write('NODE_COORD_SECTION:\n')
+            output.write('NODE_COORD_SECTION:\n')
             city_number = 0
             for city in self.coordinates:
-                output_filehandle.write('{:d} {:d} {:d}\n'.format(city_number, city[0], city[1]))
+                output.write('{:d} {:d} {:d}\n'.format(city_number, city[0], city[1]))
                 city_number += 1
 
             # And finally an EOF record
-            output_filehandle.write('EOF:\n')
-
-        except:
-            # Remove the incomplete file
-            # Note on Windows we must close the file before deleting it
-            output_filehandle.close()
-            if output_path != '':
-                os.unlink(output_path)
-            # Now re-raise the exception
-            raise
-
-        output_filehandle.close()
+            output.write('EOF:\n')
 
     # max_segments == 0 implies unlimited number of segments per path
     def write_tspsvg(self, output_path, tour, max_segments=400,
                      line_color='#000000', fill_color='none',
-                     file_contents='3', label=None):
+                     file_contents=3, label=None):
+
+        # File contents explanation:
+        # 0: Produce output with neither the SVG preamble or postamble
+        # 1: Produce output with only the SVG preamble
+        # 2: Produce output with only the SVG postamble
+        # 3: Produce output with complete the SVG
 
         if max_segments < 0:
-            raise ValueError("Max Segments must be greater than 0.")
+            raise ValueError("Max Segments must be greater or equal to 0.")
 
         # max_segments will limit number of points in the path and hence we need
         # Note that previously we ensured that max_segments >= 0
         if max_segments:
             max_segments += 1
 
-        # Default line color to black
-        if not line_color:
-            line_color = '#000000'
-
         # Note, we only ask for a fill color when we know we're drawing
         # a single, closed path
         if fill_color:
             fill_color = fill_color.strip('"\'')
-        if not fill_color or max_segments:
+        if max_segments:
             fill_color = 'none'
+        with open(output_path, 'w') as output:
 
-        f = open(output_path, 'w')
+            # Write the SVG preamble?
+            if file_contents in [1, 3]:
+                output.write(
+                    '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+                    '<!-- Created with the Eggbot TSP art toolkit (http://egg-bot.com) -->\n'
+                    '\n'
+                    '<svg xmlns="http://www.w3.org/2000/svg"\n'
+                    '     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"\n'
+                    '     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"\n'
+                    '     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+                    '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n'
+                    '     xmlns:cc="http://creativecommons.org/ns#"\n'
+                    '     height="{h}"\n'
+                    '     width="{w}">\n'
+                    '  <sodipodi:namedview\n'
+                    '            showgrid="false"\n'
+                    '            showborder="true"\n'
+                    '            inkscape:showpageshadow="false"/>\n'
+                    '  <metadata>\n'
+                    '    <rdf:RDF>\n'
+                    '      <cc:Work rdf:about="">\n'
+                    '        <dc:format>image/svg+xml</dc:format>\n'
+                    '        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />\n'
+                    '        <dc:subject>\n'
+                    '          <rdf:Bag>\n'
+                    '            <rdf:li>Egg-Bot</rdf:li>\n'
+                    '            <rdf:li>Eggbot</rdf:li>\n'
+                    '            <rdf:li>TSP</rdf:li>\n'
+                    '            <rdf:li>TSP art</rdf:li>\n'
+                    '          </rdf:Bag>\n'
+                    '        </dc:subject>\n'
+                    '        <dc:description>TSP art created with the Eggbot TSP art toolkit (http://egg-bot.com)</dc:description>\n'
+                    '      </cc:Work>\n'
+                    '    </rdf:RDF>\n'
+                    '  </metadata>\n'.format(h=self.height, w=self.width))
 
-        # Write the SVG preamble?
-        if 1 & int(file_contents):
-            f.write(
-                '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
-                '<!-- Created with the Eggbot TSP art toolkit (http://egg-bot.com) -->\n'
-                '\n'
-                '<svg xmlns="http://www.w3.org/2000/svg"\n'
-                '     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"\n'
-                '     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"\n'
-                '     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
-                '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n'
-                '     xmlns:cc="http://creativecommons.org/ns#"\n'
-                '     height="{h}"\n'
-                '     width="{w}">\n'
-                '  <sodipodi:namedview\n'
-                '            showgrid="false"\n'
-                '            showborder="true"\n'
-                '            inkscape:showpageshadow="false"/>\n'
-                '  <metadata>\n'
-                '    <rdf:RDF>\n'
-                '      <cc:Work rdf:about="">\n'
-                '        <dc:format>image/svg+xml</dc:format>\n'
-                '        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />\n'
-                '        <dc:subject>\n'
-                '          <rdf:Bag>\n'
-                '            <rdf:li>Egg-Bot</rdf:li>\n'
-                '            <rdf:li>Eggbot</rdf:li>\n'
-                '            <rdf:li>TSP</rdf:li>\n'
-                '            <rdf:li>TSP art</rdf:li>\n'
-                '          </rdf:Bag>\n'
-                '        </dc:subject>\n'
-                '        <dc:description>TSP art created with the Eggbot TSP art toolkit (http://egg-bot.com)</dc:description>\n'
-                '      </cc:Work>\n'
-                '    </rdf:RDF>\n'
-                '  </metadata>\n'.format(h=self.height, w=self.width))
+            if label:
+                output.write('inkscape:groupmode="layer" inkscape:label="{}"\n'.format(escape(label, quote=True)))
 
-        if label:
-            f.write('inkscape:groupmode="layer" inkscape:label="{}"\n'.format(escape(label, quote=True)))
+            output.write('>\n')
 
-        f.write('>\n')
+            max_index = len(self.coordinates)
+            last_city = None
+            path = False
+            first_path = True
+            points = 0
 
-        max_index = len(self.coordinates)
-        last_city = None
-        path = False
-        first_path = True
-        points = 0
+            for city_idx in tour:
 
-        for city_idx in tour:
+                city_index = int(city_idx)
+                if city_index < 0 or city_index >= max_index:
+                    sys.stderr.write('TSP tour contains an invalid city index, {}\n'.format(city_index))
+                    os.unlink(output_path)
+                    return False
 
-            city_index = int(city_idx)
-            if (city_index < 0) or (city_index >= max_index):
-                sys.stderr.write('TSP tour contains an invalid city index, {}\n'.format(city_index))
-                f.close()
-                os.unlink(output_path)
-                return False
+                if not path:
+                    # We need to start a new path whose first point is the
+                    # last city we moved to
+                    path = True
+                    if not last_city:
+                        last_city = self.coordinates[city_index]
 
-            if not path:
-                # We need to start a new path whose first point is the
-                # last city we moved to
-                path = True
-                if not last_city:
-                    last_city = self.coordinates[city_index]
+                    last_city_y = self.height - last_city[1]
+                    output.write('    <path style="fill:{};stroke:{};stroke-width:1"\n'.format(fill_color, line_color) +
+                                 '          d="m {:d},{:d}'.format(last_city[0], last_city_y))
+                    if points == 0:
+                        # This is the first path so skip the next step
+                        continue
 
-                last_city_y = self.height - last_city[1]
-                f.write('    <path style="fill:{};stroke:{};stroke-width:1"\n'.format(fill_color, line_color) +
-                        '          d="m {:d},{:d}'.format(last_city[0], last_city_y))
-                if points == 0:
-                    # This is the first path so skip the next step
-                    continue
+                # Now move to the current city
+                next_city = self.coordinates[city_index]
+                next_city_x = next_city[0] - last_city[0]
+                next_city_y = (next_city[1] - last_city[1]) * -1
 
-            # Now move to the current city
-            next_city = self.coordinates[city_index]
-            next_city_x = next_city[0] - last_city[0]
-            next_city_y = (next_city[1] - last_city[1]) * -1
+                output.write(' {:d},{:d}'.format(next_city_x, next_city_y))
+                last_city = next_city
+                points += 1
 
-            f.write(' {:d},{:d}'.format(next_city_x, next_city_y))
-            last_city = next_city
-            points += 1
+                if max_segments and points > max_segments:
+                    # Start a new path
+                    path = False
+                    first_path = False
+                    points = 1  # 1 and not 0
+                    output.write('"/>\n')
 
-            if max_segments and points > max_segments:
-                # Start a new path
-                path = False
-                first_path = False
-                points = 1  # 1 and not 0
-                f.write('"/>\n')
+            # Close out any open path
+            if path:
+                if first_path:
+                    # Make sure it's known that this is a single, closed path
+                    # Note: if we wrote a single path but closed it out because
+                    # len(tour) == max_segments + 1, then this final 'Z' will be omitted
+                    # which should be okay anyway.
+                    output.write(' Z"/>\n')
+                else:
+                    output.write('"/>\n')
 
-        # Close out any open path
-        if path:
-            if first_path:
-                # Make sure it's known that this is a single, closed path
-                # Note: if we wrote a single path but closed it out because
-                # len(tour) == max_segments + 1, then this final 'Z' will be omitted
-                # which should be okay anyway.
-                f.write(' Z"/>\n')
-            else:
-                f.write('"/>\n')
-
-        # Write the SVG postamble?
-        if 2 & int(file_contents):
-            f.write('</svg>\n')
+            # Write the SVG postamble?
+            if int(file_contents) in [2, 3]:
+                output.write('</svg>\n')
 
         return True
 
