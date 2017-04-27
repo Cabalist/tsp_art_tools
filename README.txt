@@ -1,7 +1,7 @@
 5 October 2010
 
 This directory contains some tools for generating TSP art for the Eggbot.
-These tools have only been tested quite a bit under OS X 10.6.
+These tools have only been tested quite a bit under OS X 10.6+
 These tools have had very limited testing on Windows XP SP3.
 
  25 Sep 2010 v0.1   Initial version
@@ -30,17 +30,15 @@ These tools have had very limited testing on Windows XP SP3.
                       For purposes of debugging, the tour file was being
                       written to the current working directory.  That is no
                       longer done.
+  26 Apr 2016 v?    Updated code for Python3  Removed 'build-concorde-osx.sh' in
+                      favor of running `brew install homebrew/science/concorde`
 
 
-build-concorde-osx.sh
-  Shell script to obtain with Curl the QSopt LP Solver library and the
-  Concorde TSP library and places them in /usr/local/src/concorde.
-  The script then builds either a 32bit or 64bit version of the Concorde
-  TSP library and places symlinks in /usr/local/bin/ for the concorde
-  and linkern executables.  (Note: QSopt is not needed for linkern.)
+Installation on OS X:
+  Install homebrew (https://brew.sh/)
+  run brew install homebrew/science/concorde`
 
-  This script will need modification for Linux.
-
+Installation on Windows:
   While binary executables are available for concorde and linkern for
   Windows, they require a minimal cygwin install.  See
   http://www.tsp.gatech.edu/concorde/downloads/downloads.htm
