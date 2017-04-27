@@ -1,6 +1,6 @@
 # Art Tools for GoCupi
 
-##Summary
+## Summary
 This repository contains code that assists in converting images to be used by the *gocupi* Polar plotter (www.gocupi.com)
 
 *Gocupi* can draw ANY IMAGE!  As long as the image is an SVG with only straight lines. :) This presents some challenges if you want to draw a photo or complicated art.  These scripts are part of the process to get an image converted over to something *gocupi* can understand.
