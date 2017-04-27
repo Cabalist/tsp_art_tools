@@ -25,7 +25,7 @@
 import sys
 
 
-class tspSolution:
+class TSPSolution(object):
     def __init__(self):
 
         # Input file name saved for error reporting
@@ -47,7 +47,6 @@ class tspSolution:
     #   ...     ...     ...
 
     def __load_linkern(self, f):
-        assert f
         for line in f:
             vals = line.strip().split(' ')
             if len(vals) != 3:
@@ -66,7 +65,6 @@ class tspSolution:
     # The final line will have between 1 and 10 indices
 
     def __load_concorde(self, f):
-        assert f
         for line in f:
             vals = line.strip().split(' ')
             if len(vals) == 0:
@@ -93,7 +91,7 @@ class tspSolution:
             ok = self.__load_linkern(f)
         else:
             f.close()
-            sys.stderr.write('Input file %s has unknown format\n' % self.infile)
+            sys.stderr.write('Input file {} has unknown format\n'.format(self.infile))
             return False
 
         f.close()
@@ -102,15 +100,14 @@ class tspSolution:
 
         # Sanity check that we read the correct number of indices from the file
         if len(self.tour) != self.count:
-            sys.stderr.write('Solution file contains wrong number of indices; %d != %d\n' % (len(self.tour), self.count))
+            sys.stderr.write('Solution file contains wrong number of indices; {:d} != {:d}\n'.format(len(self.tour), self.count))
             return False
 
         # Sanity check that none of the indices are < 0 or >= self.size
         for t in self.tour:
             i = int(t)
-            if (i < 0) or (i > self.count):
-                print(t, i)
-                sys.stderr.write('Invalid tour index found in file %s\n' % self.infile)
+            if i < 0 or i > self.count:
+                sys.stderr.write('Invalid tour index found in file {}\n'.format(self.infile))
                 return False
 
         # Now "close" the tour by making the trip from the ending position

@@ -72,8 +72,8 @@ import subprocess
 import sys
 import tempfile
 
-from tspbitcity import tspBitCity
-from tspsolution import tspSolution
+from tspbitcity import TSPBitCity
+from tspsolution import TSPSolution
 
 try:
     input = raw_input  # Python 2
@@ -89,7 +89,7 @@ else:
     use_shell = True
 
 # linkern switches
-LINKERN_OPTS = ' -r %s -o %s %s'
+LINKERN_OPTS = ' -r {} -o {} {}'
 
 # Number of linkern runs to take
 linkern_runs = 1
@@ -98,7 +98,7 @@ linkern_runs = 1
 stipple_report_only = False
 
 # Maximum number of line segments per <path>
-max_segments = int(40000000000000)
+max_segments = 40000000000000
 
 # Fill color for closed paths
 fill_color = 'none'
@@ -172,11 +172,11 @@ for opt, val in opts:
     elif opt in ('-m', '--max-segments'):
         if int(val) >= 0:
             max_segments = int(val)
-    elif opt in ('--mid'):
+    elif opt == '--mid':
         file_contents = 0
-    elif opt in ('--post'):
+    elif opt == '--post':
         file_contents = 2
-    elif opt in ('--pre'):
+    elif opt == '--pre':
         file_contents = 1
     elif opt in ('-r', '--runs'):
         linkern_runs = val if int(val) > 0 else '1'
@@ -184,7 +184,7 @@ for opt, val in opts:
         LINKERN = val
 
 # Enforce -max-segments=0 when --fill is used
-if (int(max_segments) != 0) and (fill_color != 'none'):
+if max_segments and fill_color != 'none':
     sys.stderr.write('Use of -f or --fill requires -max-segments=0\n')
     usage(sys.argv[0], 1)
 
@@ -208,7 +208,7 @@ elif len(args) == 2:
     infile = args[0]
     outfile = args[1]
 else:
-    sys.stderr.write('Usage: %s [input-bitmap-file [output-svg-file]]\n' % sys.argv[0])
+    sys.stderr.write('Usage: {} [input-bitmap-file [output-svg-file]]\n'.format(sys.argv[0]))
     sys.exit(1)
 
 # Convert files to absolute files
@@ -242,11 +242,11 @@ else:
 solfile = os.path.join(tempfile.gettempdir(), os.path.basename(solfile))
 
 # Load the bitmap file
-print('Loading bitmap file %s ... ' % infile)
-cities = tspBitCity()
+print('Loading bitmap file {} ... '.format(infile))
+cities = TSPBitCity()
 if not cities.load(infile):
     sys.exit(1)
-print('done; %d stipples' % len(cities.coordinates))
+print('done; {:d} stipples'.format(len(cities.coordinates)))
 if stipple_report_only:
     sys.exit(0)
 
@@ -260,13 +260,13 @@ if tsp_fd < 0:
 tsp_f = os.fdopen(tsp_fd, 'w')
 
 # Now write the TSPLIB file
-print('Writing TSP solver input file %s ... ' % tspfile)
+print('Writing TSP solver input file {} ... '.format(tspfile))
 cities.write_tspfile(tspfile, tsp_f)
 print('done')
 
 # Run the solver
 print('Running TSP solver ... ')
-cmd = LINKERN + LINKERN_OPTS % (linkern_runs, solfile, tspfile)
+cmd = LINKERN + LINKERN_OPTS.format(linkern_runs, solfile, tspfile)
 pipe = subprocess.Popen(cmd, shell=use_shell)
 status = pipe.wait()
 
@@ -276,7 +276,7 @@ os.unlink(tspfile)
 # Did the solver succeed?
 if status:
     # No, something went wrong
-    sys.stderr.write('Solver failed; status = %s\n' % status)
+    sys.stderr.write('Solver failed; status = {}\n'.format(status))
     os.unlink(solfile)
     sys.exit(1)
 
@@ -284,8 +284,8 @@ if status:
 print('\nSolver finished successfully')
 
 # Load the solution (a tour)
-print('Loading solver results from %s ... ' % solfile)
-solution = tspSolution()
+print('Loading solver results from {} ... '.format(solfile))
+solution = TSPSolution()
 if not solution.load(solfile):
     sys.stderr.write('Unable to load the solution file\n')
     os.unlink(solfile)
@@ -296,7 +296,7 @@ print('done')
 os.unlink(solfile)
 
 # Now write the SVG file
-print('Writing SVG file %s ... ' % outfile)
+print('Writing SVG file {} ... '.format(outfile))
 if not cities.write_tspsvg(outfile, solution.tour, max_segments,
                            line_color, fill_color, file_contents,
                            layer_name):

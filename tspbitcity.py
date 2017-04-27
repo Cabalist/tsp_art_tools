@@ -37,16 +37,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from __future__ import division
+
+import os
+import sys
+
+try:
+    from cgi import escape
+except ImportError:
+    from html import escape
+
 try:
     input = raw_input  # Python 2
 except NameError:
     pass  # Python 3
 
-import os
-import sys
 
-
-class tspBitCity:
+class TSPBitCity(object):
     # When presented with a collection of floating point (x,y) coordinates,
     # we normalize their bounding box to have a height and width of BOXSIZE
     BOXSIZE = float(800)
@@ -83,8 +90,10 @@ class tspBitCity:
 
     # Load a PBM of type P4
     def __load_pbm_p4(self, f):
-
-        assert (self.width > 0) and (self.height > 0)
+        if self.width <= 0:
+            raise ValueError("Width of {} must be greater than 0".format(self.infile))
+        if self.height <= 0:
+            raise ValueError("Height of {} must be greater than 0".format(self.infile))
 
         self.coordinates = []
 
@@ -112,14 +121,15 @@ class tspBitCity:
             # And start at the first byte of the line read
             column_byte_index = 0
 
-            # Convert the unsigned char byte to an integer
-            column_byte = row_bytes[0]
+            # initialize the steps
+            column_byte = row_bytes[column_byte_index]
+            pixel_mask = 0b10000000
 
             # Now process this row from left to right, x = 0 to x = w - 1
-            pixel_mask = 0b10000000
             for column in range(0, self.width):
 
                 # Hack for Python2/3 compatibility
+                # Convert the unsigned char byte to an integer
                 if not isinstance(column_byte, int):
                     column_byte = ord(column_byte)
 
@@ -132,14 +142,15 @@ class tspBitCity:
                 pixel_mask >>= 1
 
                 # See if it's time to move to the next byte in the input line
+                # Reinitialize the steps
                 if pixel_mask == 0x00:
                     column_byte_index += 1
                     if column_byte_index < nbytes:
                         column_byte = row_bytes[column_byte_index]
-                        pixel_mask = int(0x80)
+                        pixel_mask = 0b10000000
                     elif column < (self.width - 1):
                         # Something has gone wrong: we didn't read enough bytes?
-                        sys.stderr.write('2 Premature end-of-file encountered in %s\n' % self.infile)
+                        sys.stderr.write('2 Premature end-of-file encountered in {}\n'.format(self.infile))
                         return False
 
         return True
@@ -147,8 +158,10 @@ class tspBitCity:
     # Load a PBM of type P1
     def __load_pbm_p1(self, f):
 
-        assert (self.width > 0) and (self.height > 0)
-        assert f
+        if self.width <= 0:
+            raise ValueError("Width of {} must be greater than 0".format(self.infile))
+        if self.height <= 0:
+            raise ValueError("Height of {} must be greater than 0".format(self.infile))
 
         self.coordinates = []
 
@@ -185,20 +198,20 @@ class tspBitCity:
 
             # Ignore semantically empty lines
             line = line.strip()
-            if (line[0] == '') or (line[0] == '#'):
+            if not line or line.startswith('#'):
                 continue
 
             # Too much data in the file?
-            if row <= -1:
-                sys.stderr.write('Too much data in %s\n' % self.infile)
+            if row < 0:
+                sys.stderr.write('Too much data in {}\n'.format(self.infile))
                 return False
 
             # Loop over each byte in the line
-            for i in range(0, len(line)):
+            for each_byte in line:
 
-                if line[i] == '1':
+                if each_byte == '1':
                     self.coordinates.append((column, row))
-                elif line[i] != '0':
+                elif each_byte != '0':
                     sys.stderr.write('Invalid content in %s\n' % self.infile)
                     return False
 
@@ -226,8 +239,6 @@ class tspBitCity:
 
     def __load_xyr(self, f):
 
-        assert f
-
         self.coordinates = []
         self.width, self.height = int(self.BOXSIZE), int(self.BOXSIZE)
         px, py = [], []
@@ -239,7 +250,7 @@ class tspBitCity:
                 continue
 
             vals = line.strip().split(' ')
-            if (len(vals) < 2) or (len(vals) > 3):
+            if len(vals) not in [2, 3]:
                 sys.stderr.write('Invalid content in file %s\n' % self.infile)
                 return False
 
@@ -258,7 +269,7 @@ class tspBitCity:
         # Note we pretend the points all have radius zero....
 
         span = float(fmax - fmin)
-        scale = float(self.BOXSIZE / span) if span != 0 else float(1)
+        scale = self.BOXSIZE / span if span > 0 else 1
         # Can't do "for x, y in px, py:" as the lists are too large
         # resulting in 'too manu values to unpack'
         for i in range(0, len(px)):
@@ -291,7 +302,7 @@ class tspBitCity:
         # For PBM files this will always be two bytes followed by a \n
         # For other image types, this line could be who knows what.  Hence
         # our use of a size argument to readline()
-        magic_number = bytes(f.readline(4))
+        magic_number = f.readline(4)
 
         # PBM files must be P1 or P4
         if magic_number in [b'P4\n', b'P1\n']:
@@ -327,7 +338,7 @@ class tspBitCity:
             # row = 0 corresponds to the bottom of the bitmap
             # column = 0 corresponds to the left edge of the bitmap
 
-            ok = self.__load_pbm_p4(f) if magic_number[1] != '1' else self.__load_pbm_p1(f)
+            ok = self.__load_pbm_p4(f) if magic_number == b'P4\n' else self.__load_pbm_p1(f)
 
         elif magic_number == b'# x-':
 
@@ -360,7 +371,7 @@ class tspBitCity:
 
         if not f:
             # Deal with funky outfile names
-            if (not outfile) or (outfile == ''):
+            if not outfile:
                 if self.infile.endswith('.pbm'):
                     outfile = self.infile[:-3] + 'tsp'
                 elif self.infile.endswith('.PBM'):
@@ -375,9 +386,9 @@ class tspBitCity:
         # And now write the contents of the TSPLIB file
         try:
             # Header
-            f.write('NAME:%s\n' % infile)
+            f.write('NAME:{}\n'.format(infile))
             f.write('TYPE:TSP\n')
-            f.write('DIMENSION:%d\n' % len(self.coordinates))
+            f.write('DIMENSION:{:d}\n'.format(len(self.coordinates)))
             f.write('EDGE_WEIGHT_TYPE:EUC_2D\n')
             f.write('NODE_COORD_TYPE:TWOD_COORDS\n')
 
@@ -385,7 +396,7 @@ class tspBitCity:
             f.write('NODE_COORD_SECTION:\n')
             city_number = 0
             for city in self.coordinates:
-                f.write('%d %d %d\n' % (city_number, city[0], city[1]))
+                f.write('{:d} {:d} {:d}\n'.format(city_number, city[0], city[1]))
                 city_number += 1
 
             # And finally an EOF record
@@ -407,26 +418,23 @@ class tspBitCity:
                      line_color='#000000', fill_color='none',
                      file_contents='3', label=None):
 
-        assert outfile
-        assert tour
-        assert (int(max_segments) >= 0)
+        if max_segments < 0:
+            raise ValueError("Max Segments must be greater than 0.")
 
-        # ms will limit number of points in the path and hence we need
-        # ms = max_segments + 1 unless max_segments = 0
+        # max_segments will limit number of points in the path and hence we need
         # Note that previously we ensured that max_segments >= 0
-        ms = int(max_segments)
-        if ms != 0:
-            ms += 1
+        if max_segments:
+            max_segments += 1
 
         # Default line color to black
-        if (not line_color) or (line_color == ''):
+        if not line_color:
             line_color = '#000000'
 
         # Note, we only ask for a fill color when we know we're drawing
         # a single, closed path
         if fill_color:
             fill_color = fill_color.strip('"\'')
-        if (not fill_color) or (fill_color == '') or (ms != int(0)):
+        if not fill_color or max_segments:
             fill_color = 'none'
 
         f = open(outfile, 'w')
@@ -434,41 +442,41 @@ class tspBitCity:
         # Write the SVG preamble?
         if 1 & int(file_contents):
             f.write(
-                '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' +
-                '<!-- Created with the Eggbot TSP art toolkit (http://egg-bot.com) -->\n' +
-                '\n' +
-                '<svg xmlns="http://www.w3.org/2000/svg"\n' +
-                '     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"\n' +
-                '     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"\n' +
-                '     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n' +
-                '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n' +
-                '     xmlns:cc="http://creativecommons.org/ns#"\n' +
-                '     height="' + str(self.height) + '"\n' +
-                '     width="' + str(self.width) + '">\n' +
-                '  <sodipodi:namedview\n' +
-                '            showgrid="false"\n' +
-                '            showborder="true"\n' +
-                '            inkscape:showpageshadow="false"/>\n' +
-                '  <metadata>\n' +
-                '    <rdf:RDF>\n' +
-                '      <cc:Work rdf:about="">\n' +
-                '        <dc:format>image/svg+xml</dc:format>\n' +
-                '        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />\n' +
-                '        <dc:subject>\n' +
-                '          <rdf:Bag>\n' +
-                '            <rdf:li>Egg-Bot</rdf:li>\n' +
-                '            <rdf:li>Eggbot</rdf:li>\n' +
-                '            <rdf:li>TSP</rdf:li>\n' +
-                '            <rdf:li>TSP art</rdf:li>\n' +
-                '          </rdf:Bag>\n' +
-                '        </dc:subject>\n' +
-                '        <dc:description>TSP art created with the Eggbot TSP art toolkit (http://egg-bot.com)</dc:description>\n' +
-                '      </cc:Work>\n' +
-                '    </rdf:RDF>\n' +
-                '  </metadata>\n')
+                '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' 
+                '<!-- Created with the Eggbot TSP art toolkit (http://egg-bot.com) -->\n' 
+                '\n' 
+                '<svg xmlns="http://www.w3.org/2000/svg"\n' 
+                '     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"\n' 
+                '     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"\n' 
+                '     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n' 
+                '     xmlns:dc="http://purl.org/dc/elements/1.1/"\n' 
+                '     xmlns:cc="http://creativecommons.org/ns#"\n' 
+                '     height="{h}"\n' 
+                '     width="{w}">\n' 
+                '  <sodipodi:namedview\n' 
+                '            showgrid="false"\n' 
+                '            showborder="true"\n' 
+                '            inkscape:showpageshadow="false"/>\n' 
+                '  <metadata>\n' 
+                '    <rdf:RDF>\n' 
+                '      <cc:Work rdf:about="">\n' 
+                '        <dc:format>image/svg+xml</dc:format>\n' 
+                '        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />\n' 
+                '        <dc:subject>\n' 
+                '          <rdf:Bag>\n' 
+                '            <rdf:li>Egg-Bot</rdf:li>\n' 
+                '            <rdf:li>Eggbot</rdf:li>\n' 
+                '            <rdf:li>TSP</rdf:li>\n' 
+                '            <rdf:li>TSP art</rdf:li>\n' 
+                '          </rdf:Bag>\n' 
+                '        </dc:subject>\n' 
+                '        <dc:description>TSP art created with the Eggbot TSP art toolkit (http://egg-bot.com)</dc:description>\n' 
+                '      </cc:Work>\n' 
+                '    </rdf:RDF>\n' 
+                '  </metadata>\n'.format(h=self.height, w=self.width))
 
-        if label and (label != ''):
-            f.write('inkscape:groupmode="layer" ' + 'inkscape:label="%s"\n' % label.replace('&', '&amp;').replace('"', '&quot;'))
+        if label:
+            f.write('inkscape:groupmode="layer" inkscape:label="{}"\n'.format(escape(label, quote=True)))
 
         f.write('>\n')
 
@@ -477,15 +485,12 @@ class tspBitCity:
         path = False
         first_path = True
         points = 0
-        last_city_y = 0
-        next_city_x = 0
-        next_city_y = 0
 
         for city_idx in tour:
 
             city_index = int(city_idx)
             if (city_index < 0) or (city_index >= max_index):
-                sys.stderr.write('TSP tour contains an invalid city index, %s\n' % city_index)
+                sys.stderr.write('TSP tour contains an invalid city index, {}\n'.format(city_index))
                 f.close()
                 os.unlink(outfile)
                 return False
@@ -498,8 +503,8 @@ class tspBitCity:
                     last_city = self.coordinates[city_index]
 
                 last_city_y = self.height - last_city[1]
-                f.write('    <path style="fill:%s;stroke:%s;stroke-width:1"\n' % (fill_color, line_color) +
-                        '          d="m %d,%d' % (last_city[0], last_city_y))
+                f.write('    <path style="fill:{};stroke:{};stroke-width:1"\n'.format(fill_color, line_color) +
+                        '          d="m {:d},{:d}'.format(last_city[0], last_city_y))
                 if points == 0:
                     # This is the first path so skip the next step
                     continue
@@ -509,11 +514,11 @@ class tspBitCity:
             next_city_x = next_city[0] - last_city[0]
             next_city_y = (next_city[1] - last_city[1]) * -1
 
-            f.write(' %d,%d' % (next_city_x, next_city_y))
+            f.write(' {:d},{:d}'.format(next_city_x, next_city_y))
             last_city = next_city
             points += 1
 
-            if (ms != 0) and (points > ms):
+            if max_segments and points > max_segments:
                 # Start a new path
                 path = False
                 first_path = False
@@ -525,8 +530,8 @@ class tspBitCity:
             if first_path:
                 # Make sure it's known that this is a single, closed path
                 # Note: if we wrote a single path but closed it out because
-                # ien( tour ) == ms+1, then this final 'Z' will be omitted
-                # whish should be okay anyway.
+                # len(tour) == max_segments + 1, then this final 'Z' will be omitted
+                # which should be okay anyway.
                 f.write(' Z"/>\n')
             else:
                 f.write('"/>\n')
@@ -575,14 +580,14 @@ if __name__ == '__main__':
             return '', ''
 
 
-    (infile, outfile) = fixup_args(sys.argv[1:])
+    infilepath, outfilepath = fixup_args(sys.argv[1:])
 
-    if (infile == '') or (outfile == ''):
-        sys.stderr.write('Usage: %s [input-bitmap-file [output-tsplib-file]]\n' % sys.argv[0])
+    if not infilepath or not outfilepath:
+        sys.stderr.write('Usage: {} [input-bitmap-file [output-tsplib-file]]\n'.format(sys.argv[0]))
         sys.exit(1)
 
-    citymap = tspBitCity()
-    if not citymap.load(infile):
+    citymap = TSPBitCity()
+    if not citymap.load(infilepath):
         sys.exit(1)
 
-    citymap.write_tspfile(outfile)
+    citymap.write_tspfile(outfilepath)
