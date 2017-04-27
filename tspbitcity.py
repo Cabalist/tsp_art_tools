@@ -86,7 +86,7 @@ class TSPBitCity(object):
         self.coordinates = []
 
     # Load a PBM of type P4
-    def __load_pbm_p4(self, f):
+    def _load_pbm_p4(self, f):
         if self.width <= 0:
             raise ValueError("Width of {} must be greater than 0".format(self.infile))
         if self.height <= 0:
@@ -153,7 +153,7 @@ class TSPBitCity(object):
         return True
 
     # Load a PBM of type P1
-    def __load_pbm_p1(self, f):
+    def _load_pbm_p1(self, f):
 
         if self.width <= 0:
             raise ValueError("Width of {} must be greater than 0".format(self.infile))
@@ -234,7 +234,7 @@ class TSPBitCity(object):
     #
     #    x-coord y-coord radius
 
-    def __load_xyr(self, f):
+    def _load_xyr(self, f):
 
         self.coordinates = []
         self.width, self.height = int(self.BOXSIZE), int(self.BOXSIZE)
@@ -322,7 +322,7 @@ class TSPBitCity(object):
                 # row = 0 corresponds to the bottom of the bitmap
                 # column = 0 corresponds to the left edge of the bitmap
 
-                ok = self.__load_pbm_p4(f) if magic_number == b'P4\n' else self.__load_pbm_p1(f)
+                ok = self._load_pbm_p4(f) if magic_number == b'P4\n' else self._load_pbm_p1(f)
 
             elif magic_number == b'# x-':
 
@@ -333,7 +333,7 @@ class TSPBitCity(object):
                     sys.stderr.write('Must be a PBM file or file of (x, y) coordinates. [err=1]\n')
                     return False
 
-                ok = self.__load_xyr(f)
+                ok = self._load_xyr(f)
 
             else:
 
